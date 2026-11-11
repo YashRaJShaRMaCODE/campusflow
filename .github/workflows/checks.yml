@@ -1,0 +1,27 @@
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  django:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install ruff==0.17.4
+      - run: python -m ruff check config students
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check
+      - run: python manage.py test
+      - run: python -m compileall -q config students
