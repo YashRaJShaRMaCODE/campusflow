@@ -10,7 +10,9 @@ from .models import Student
 class StudentApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = get_user_model().objects.create_user(username="admin", password="test-password")
+        self.user = get_user_model().objects.create_user(
+            username="staff", password="test-password", is_staff=True,
+        )
 
     def authenticate(self):
         self.client.force_authenticate(user=self.user)
@@ -28,6 +30,14 @@ class StudentApiTests(TestCase):
         self.assertEqual(response.json(), {"status": "ok"})
 
     def test_student_data_requires_authentication(self):
+        for path in ("/students/", "/students/average/", "/students/count/"):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 403)
+        self.assertEqual(self.client.post("/students/add/", {}).status_code, 403)
+
+    def test_student_data_rejects_authenticated_non_staff_users(self):
+        user = get_user_model().objects.create_user(username="student", password="test-password")
+        self.client.force_authenticate(user=user)
         for path in ("/students/", "/students/average/", "/students/count/"):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 403)

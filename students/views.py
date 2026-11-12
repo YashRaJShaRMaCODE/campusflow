@@ -4,7 +4,7 @@ from django.urls import reverse
 from rest_framework import filters, generics
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -16,7 +16,7 @@ class StudentCreateView(generics.CreateAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
 
 class StudentPagination(PageNumberPagination):
@@ -29,7 +29,7 @@ class StudentListView(generics.ListAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
     pagination_class = StudentPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
@@ -39,7 +39,7 @@ class StudentListView(generics.ListAPIView):
 
 class AverageMarksView(APIView):
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
         result = Student.objects.aggregate(
@@ -60,7 +60,7 @@ class AverageMarksView(APIView):
 
 class PassedStudentsCountView(APIView):
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
         percentage = ExpressionWrapper(
