@@ -30,7 +30,7 @@ class StudentApiTests(TestCase):
         self.assertEqual(response.json(), {"status": "ok"})
 
     def test_student_data_requires_authentication(self):
-        for path in ("/students/", "/students/average/", "/students/count/"):
+        for path in ("/students/", "/students/1/", "/students/average/", "/students/count/"):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 403)
         self.assertEqual(self.client.post("/students/add/", {}).status_code, 403)
@@ -38,7 +38,7 @@ class StudentApiTests(TestCase):
     def test_student_data_rejects_authenticated_non_staff_users(self):
         user = get_user_model().objects.create_user(username="student", password="test-password")
         self.client.force_authenticate(user=user)
-        for path in ("/students/", "/students/average/", "/students/count/"):
+        for path in ("/students/", "/students/1/", "/students/average/", "/students/count/"):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 403)
         self.assertEqual(self.client.post("/students/add/", {}).status_code, 403)
@@ -77,6 +77,53 @@ class StudentApiTests(TestCase):
         search = self.client.get("/students/?search=Student%2029")
         self.assertEqual(search.data["count"], 1)
         self.assertEqual(search.data["results"][0]["name"], "Student 29")
+
+    def test_list_filters_by_date_and_percentage_and_reports_percentage(self):
+        self.authenticate()
+        Student.objects.bulk_create([
+            Student(name="Outside range", total_marks=100, marks_obtained=95, date=date(2026, 10, 31)),
+            Student(name="Below range", total_marks=100, marks_obtained=70, date=date(2026, 11, 2)),
+            Student(name="In range", total_marks=200, marks_obtained=170, date=date(2026, 11, 3)),
+        ])
+
+        response = self.client.get(
+            "/students/?date_from=2026-11-01&date_to=2026-11-05&min_percentage=80&max_percentage=90"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["name"], "In range")
+        self.assertEqual(response.data["results"][0]["percentage"], 85)
+
+    def test_list_rejects_invalid_date_and_percentage_filters(self):
+        self.authenticate()
+        for query in (
+            "?date_from=not-a-date",
+            "?date_from=2026-11-05&date_to=2026-11-01",
+            "?min_percentage=101",
+            "?min_percentage=80&max_percentage=70",
+        ):
+            with self.subTest(query=query):
+                self.assertEqual(self.client.get(f"/students/{query}").status_code, 400)
+
+    def test_staff_can_read_and_correct_a_record_without_violating_marks(self):
+        self.authenticate()
+        student = Student.objects.create(
+            name="Existing record", total_marks=50, marks_obtained=33, date=date(2026, 11, 1),
+        )
+
+        detail = self.client.get(f"/students/{student.pk}/")
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.data["percentage"], 66)
+
+        invalid = self.client.patch(f"/students/{student.pk}/", {"total_marks": 30}, format="json")
+        self.assertEqual(invalid.status_code, 400)
+        student.refresh_from_db()
+        self.assertEqual(student.total_marks, 50)
+
+        updated = self.client.patch(f"/students/{student.pk}/", {"marks_obtained": 25}, format="json")
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.data["percentage"], 50)
 
     def test_aggregates_are_correct_for_empty_and_populated_data(self):
         self.authenticate()

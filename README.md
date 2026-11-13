@@ -26,7 +26,8 @@ The root `GET /` lists endpoint links. `GET /healthz/` is a minimal public healt
 | Method | Path | What it does |
 | --- | --- | --- |
 | `POST` | `/students/add/` | Add a record (`name`, `total_marks`, `marks_obtained`, `date`) |
-| `GET` | `/students/` | List records, 25 per page (maximum 100); supports `search` by name and `ordering` by name, date, or marks |
+| `GET` | `/students/` | List records, 25 per page (maximum 100); supports name search, ordering, `date_from`, `date_to`, `min_percentage`, and `max_percentage` filters |
+| `GET`, `PUT`, `PATCH` | `/students/{id}/` | View or correct one record; deletion is not exposed |
 | `GET` | `/students/average/` | Class record count and average marks/percentage |
 | `GET` | `/students/count/` | Count records with at least 33% |
 
@@ -41,7 +42,7 @@ Example create request:
 }
 ```
 
-Names are trimmed and required. Total marks must be positive and obtained marks cannot exceed the total. Responses for lists use the standard paginated shape with `count`, `next`, `previous`, and `results`.
+Names are trimmed and required. Total marks must be positive and obtained marks cannot exceed the total, including when only one field is changed. Record responses include a calculated `percentage` rounded to two decimal places. Date filters use `YYYY-MM-DD`; percentage bounds must be from 0 to 100. Responses for lists use the standard paginated shape with `count`, `next`, `previous`, and `results`.
 
 ## Checks
 
