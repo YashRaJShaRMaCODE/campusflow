@@ -17,7 +17,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Sign in at `http://127.0.0.1:8000/api-auth/login/`. Local development uses SQLite and a development-only secret. For deployment, set a private `DJANGO_SECRET_KEY`, set `DJANGO_DEBUG=false`, and set `DJANGO_ALLOWED_HOSTS` to comma-separated host names. Use a persistent production database or persistent storage; the local SQLite file is ignored by Git and is not a production backup.
+Sign in at `http://127.0.0.1:8000/api-auth/login/`. Local development uses SQLite and a development-only secret. For deployment, set `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and a PostgreSQL `DATABASE_URL` in the host's secret settings. Production refuses to start with SQLite or a PostgreSQL URL that disables TLS; `sslmode=require` is used if the URL omits `sslmode`. URL-encode special characters in database usernames and passwords.
 
 For a local demo, sign in to Django admin, create a school, then assign each staff account one `SchoolMembership`. Staff without a school assignment cannot use student-data endpoints. One staff account belongs to one school in this version; there is no public school signup.
 
@@ -64,7 +64,7 @@ python -m compileall -q config students
 
 Do not store real student records in a public demo. Student list, detail, create and summary APIs are scoped to the signed-in staff member's school; client-supplied school IDs are never used. Existing records without an assigned school are hidden from these APIs until an administrator assigns them. This is a basic tenant boundary, not a complete school privacy or compliance program.
 
-The current settings use SQLite only; the code does not yet configure `DATABASE_URL` or PostgreSQL. SQLite on an ephemeral free host is not a durable or backed-up student-data store. Before any real deployment, add a supported persistent database, tested backups and restore, HTTPS, least-privilege access, retention/deletion controls and a privacy/legal review. Keep secrets out of source control. The public health endpoint intentionally returns only `{"status":"ok"}`.
+The app supports PostgreSQL for deployment, but SQLite on an ephemeral free host is not a durable or backed-up student-data store. Before any real student records are used, configure a managed PostgreSQL database with tested backups and restore, HTTPS, least-privilege access, retention/deletion controls and a privacy/legal review. Keep secrets out of source control. The public health endpoint intentionally returns only `{"status":"ok"}`.
 
 ## Service readiness
 
