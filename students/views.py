@@ -1,26 +1,46 @@
+import csv
 import math
 
+from django.db import transaction
 from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, Sum
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.utils.dateparse import parse_date
 from rest_framework import filters, generics
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Student
-from .serializers import StudentSerializer
+from .models import Student, StudentChangeEvent, StudentExportRequest
+from .permissions import HasSchoolMembership
+from .serializers import StudentChangeEventSerializer, StudentExportRequestSerializer, StudentSerializer
 
 
-class StudentCreateView(generics.CreateAPIView):
+class PrivateStudentDataMixin:
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class StudentCreateView(PrivateStudentDataMixin, generics.CreateAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser, HasSchoolMembership]
+
+    def perform_create(self, serializer):
+        with transaction.atomic():
+            student = serializer.save(school=self.request.school)
+            StudentChangeEvent.objects.create(
+                school=self.request.school,
+                student_id=student.pk,
+                actor=self.request.user,
+                action=StudentChangeEvent.Action.CREATED,
+            )
 
 
 class StudentPagination(PageNumberPagination):
@@ -29,11 +49,11 @@ class StudentPagination(PageNumberPagination):
     max_page_size = 100
 
 
-class StudentListView(generics.ListAPIView):
+class StudentListView(PrivateStudentDataMixin, generics.ListAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser, HasSchoolMembership]
     pagination_class = StudentPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
@@ -41,7 +61,7 @@ class StudentListView(generics.ListAPIView):
     ordering = ["-date", "name", "id"]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = Student.objects.filter(school=self.request.school)
         params = self.request.query_params
 
         date_from = self._date_filter(params.get("date_from"), "date_from")
@@ -91,19 +111,89 @@ class StudentListView(generics.ListAPIView):
         return parsed
 
 
-class StudentDetailView(generics.RetrieveUpdateAPIView):
+class _CsvEcho:
+    def write(self, value):
+        return value
+
+
+class StudentCsvExportView(StudentListView):
+    def get(self, request):
+        writer = csv.writer(_CsvEcho())
+        queryset = self.filter_queryset(self.get_queryset()).values_list(
+            "id", "name", "date", "marks_obtained", "total_marks",
+        )
+        StudentExportRequest.objects.create(
+            school=request.school,
+            actor=request.user,
+            record_count=queryset.count(),
+        )
+
+        def rows():
+            yield writer.writerow(("student_id", "name", "date", "marks_obtained", "total_marks", "percentage"))
+            for student_id, name, exam_date, marks, total in queryset.iterator(chunk_size=500):
+                safe_name = f"'{name}" if name.lstrip(" \t\r\n").startswith(("=", "+", "-", "@")) else name
+                yield writer.writerow((student_id, safe_name, exam_date, marks, total, round(marks * 100 / total, 2)))
+
+        response = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="campusflow-students.csv"'
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class StudentDetailView(PrivateStudentDataMixin, generics.RetrieveUpdateAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser, HasSchoolMembership]
+
+    def get_queryset(self):
+        return Student.objects.filter(school=self.request.school)
+
+    def perform_update(self, serializer):
+        if not serializer.validated_data:
+            return
+        with transaction.atomic():
+            student = serializer.save()
+            StudentChangeEvent.objects.create(
+                school=self.request.school,
+                student_id=student.pk,
+                actor=self.request.user,
+                action=StudentChangeEvent.Action.UPDATED,
+            )
 
 
-class AverageMarksView(APIView):
+class StudentChangeHistoryView(PrivateStudentDataMixin, generics.ListAPIView):
+    serializer_class = StudentChangeEventSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser, HasSchoolMembership]
+    pagination_class = StudentPagination
+
+    def get_queryset(self):
+        student_id = self.kwargs["pk"]
+        if not Student.objects.filter(pk=student_id, school=self.request.school).exists():
+            raise NotFound("Student record not found.")
+        return StudentChangeEvent.objects.filter(
+            school=self.request.school,
+            student_id=student_id,
+        )
+
+
+class StudentExportHistoryView(PrivateStudentDataMixin, generics.ListAPIView):
+    serializer_class = StudentExportRequestSerializer
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsAdminUser, HasSchoolMembership]
+    pagination_class = StudentPagination
+
+    def get_queryset(self):
+        return StudentExportRequest.objects.filter(school=self.request.school).select_related("actor")
+
+
+class AverageMarksView(PrivateStudentDataMixin, APIView):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsAdminUser, HasSchoolMembership]
 
     def get(self, request):
-        result = Student.objects.aggregate(
+        result = Student.objects.filter(school=request.school).aggregate(
             student_count=Count("id"),
             average_marks=Avg("marks_obtained"),
             total_obtained=Sum("marks_obtained", default=0),
@@ -119,16 +209,21 @@ class AverageMarksView(APIView):
         })
 
 
-class PassedStudentsCountView(APIView):
+class PassedStudentsCountView(PrivateStudentDataMixin, APIView):
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser, HasSchoolMembership]
 
     def get(self, request):
         percentage = ExpressionWrapper(
             F("marks_obtained") * 100.0 / F("total_marks"),
             output_field=FloatField(),
         )
-        count = Student.objects.annotate(percentage=percentage).filter(percentage__gte=33).count()
+        count = (
+            Student.objects.filter(school=request.school)
+            .annotate(percentage=percentage)
+            .filter(percentage__gte=33)
+            .count()
+        )
 
         return Response({
             "students_above_33_percent": count
@@ -151,13 +246,15 @@ class APIRootView(APIView):
         endpoints = {
             "health": "healthz",
             "students": "student-list",
+            "export_csv": "student-export",
+            "export_history": "student-export-history",
             "create_student": "student-create",
             "average": "student-average",
             "passed_count": "student-count",
             "sign_in": "rest_framework:login",
         }
         return Response({
-            "name": "Student Records API",
+            "name": "CampusFlow API",
             "version": "1",
             "authentication": "Django session",
             "endpoints": {

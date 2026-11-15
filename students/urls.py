@@ -5,8 +5,11 @@ from .views import (
     AverageMarksView,
     HealthCheckView,
     PassedStudentsCountView,
+    StudentChangeHistoryView,
     StudentCreateView,
+    StudentCsvExportView,
     StudentDetailView,
+    StudentExportHistoryView,
     StudentListView,
 )
 
@@ -20,6 +23,16 @@ urlpatterns = [
     ),
 
     path(
+        "students/export.csv",
+        StudentCsvExportView.as_view(),
+        name="student-export",
+    ),
+    path(
+        "students/exports/",
+        StudentExportHistoryView.as_view(),
+        name="student-export-history",
+    ),
+    path(
         "students/",
         StudentListView.as_view(),
         name="student-list",
@@ -28,6 +41,11 @@ urlpatterns = [
         "students/<int:pk>/",
         StudentDetailView.as_view(),
         name="student-detail",
+    ),
+    path(
+        "students/<int:pk>/changes/",
+        StudentChangeHistoryView.as_view(),
+        name="student-change-history",
     ),
 
     path(

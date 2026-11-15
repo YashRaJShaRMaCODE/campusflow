@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Student
+from .models import Student, StudentChangeEvent, StudentExportRequest
 
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -28,3 +28,21 @@ class StudentSerializer(serializers.ModelSerializer):
 
     def get_percentage(self, student):
         return round(student.marks_obtained * 100 / student.total_marks, 2)
+
+
+class StudentChangeEventSerializer(serializers.ModelSerializer):
+    actor_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = StudentChangeEvent
+        fields = ("id", "student_id", "actor_id", "action", "created_at")
+        read_only_fields = fields
+
+
+class StudentExportRequestSerializer(serializers.ModelSerializer):
+    actor_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = StudentExportRequest
+        fields = ("id", "actor_id", "record_count", "requested_at")
+        read_only_fields = fields

@@ -1,6 +1,6 @@
-# Student Records API
+# CampusFlow API
 
-A small Django REST API for recording student marks and viewing class summaries. Student records are private: every student-data endpoint requires a signed-in staff account. The public root and health check expose no student information.
+A sample Django REST API for recording student marks and viewing class summaries. Student-data endpoints require a signed-in staff account. The public root and health check expose no student information.
 
 ## Run locally
 
@@ -19,6 +19,8 @@ python manage.py runserver
 
 Sign in at `http://127.0.0.1:8000/api-auth/login/`. Local development uses SQLite and a development-only secret. For deployment, set a private `DJANGO_SECRET_KEY`, set `DJANGO_DEBUG=false`, and set `DJANGO_ALLOWED_HOSTS` to comma-separated host names. Use a persistent production database or persistent storage; the local SQLite file is ignored by Git and is not a production backup.
 
+For a local demo, sign in to Django admin, create a school, then assign each staff account one `SchoolMembership`. Staff without a school assignment cannot use student-data endpoints. One staff account belongs to one school in this version; there is no public school signup.
+
 ## API
 
 The root `GET /` lists endpoint links. `GET /healthz/` is a minimal public health check. All `/students/` endpoints require a signed-in session; create staff users through Django's admin or `createsuperuser`.
@@ -27,7 +29,10 @@ The root `GET /` lists endpoint links. `GET /healthz/` is a minimal public healt
 | --- | --- | --- |
 | `POST` | `/students/add/` | Add a record (`name`, `total_marks`, `marks_obtained`, `date`) |
 | `GET` | `/students/` | List records, 25 per page (maximum 100); supports name search, ordering, `date_from`, `date_to`, `min_percentage`, and `max_percentage` filters |
+| `GET` | `/students/export.csv` | Download the school-scoped, filtered result set as a private CSV; formula-like names are escaped and the response is not cached |
+| `GET` | `/students/exports/` | Review this school's paginated export requests (staff actor, request time and row count; no student details) |
 | `GET`, `PUT`, `PATCH` | `/students/{id}/` | View or correct one record; deletion is not exposed |
+| `GET` | `/students/{id}/changes/` | View the latest 25 school-scoped change events; includes actor ID, action, record ID and time, never student field values |
 | `GET` | `/students/average/` | Class record count and average marks/percentage |
 | `GET` | `/students/count/` | Count records with at least 33% |
 
@@ -44,6 +49,8 @@ Example create request:
 
 Names are trimmed and required. Total marks must be positive and obtained marks cannot exceed the total, including when only one field is changed. Record responses include a calculated `percentage` rounded to two decimal places. Date filters use `YYYY-MM-DD`; percentage bounds must be from 0 to 100. Responses for lists use the standard paginated shape with `count`, `next`, `previous`, and `results`.
 
+CSV exports use the same school boundary, search, ordering, date, and percentage filters as the list endpoint. Export requests are logged per school without storing student names or marks. Treat downloaded files as private student data and store or share them only with school authorization.
+
 ## Checks
 
 ```powershell
@@ -55,4 +62,10 @@ python -m compileall -q config students
 
 ## Privacy and deployment
 
-Do not store real student records in a public demo. Keep secrets out of source control and use HTTPS in production. Configure a durable database, backups, and access only for authorized staff before using real data. The public health endpoint intentionally returns only `{"status":"ok"}`.
+Do not store real student records in a public demo. Student list, detail, create and summary APIs are scoped to the signed-in staff member's school; client-supplied school IDs are never used. Existing records without an assigned school are hidden from these APIs until an administrator assigns them. This is a basic tenant boundary, not a complete school privacy or compliance program.
+
+The current settings use SQLite only; the code does not yet configure `DATABASE_URL` or PostgreSQL. SQLite on an ephemeral free host is not a durable or backed-up student-data store. Before any real deployment, add a supported persistent database, tested backups and restore, HTTPS, least-privilege access, retention/deletion controls and a privacy/legal review. Keep secrets out of source control. The public health endpoint intentionally returns only `{"status":"ok"}`.
+
+## Service readiness
+
+This repository is a backend API sample; it has no school onboarding UI, staff roles beyond school membership, subscription billing or verified customers. Record create/update actions now write a school-scoped change event in the same database transaction. Events omit names, marks and changed values; read activity, retention controls and compliance review remain outstanding. A possible paid direction is a managed API for individual schools, but it is not ready to sell or use with real student records. Free infrastructure from `free-for.dev` is suitable for CI or synthetic demos only here; do not place student data on a free database or sleeping demo host.
