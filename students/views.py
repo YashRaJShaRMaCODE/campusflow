@@ -3,7 +3,8 @@ import math
 
 from django.db import transaction
 from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, Sum
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
+from django.shortcuts import render
 from django.urls import reverse
 from django.utils.dateparse import parse_date
 from rest_framework import filters, generics
@@ -262,3 +263,23 @@ class APIRootView(APIView):
                 for name, route_name in endpoints.items()
             },
         })
+
+
+def product_page(request):
+    return render(request, "students/product.html")
+
+
+def robots_txt(request):
+    sitemap_url = request.build_absolute_uri(reverse("sitemap"))
+    return HttpResponse(
+        f"User-agent: *\nAllow: /product/\nDisallow: /students/\nDisallow: /admin/\nSitemap: {sitemap_url}\n",
+        content_type="text/plain",
+    )
+
+
+def sitemap_xml(request):
+    product_url = request.build_absolute_uri(reverse("product-page"))
+    return HttpResponse(
+        f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>{product_url}</loc></url></urlset>',
+        content_type="application/xml",
+    )

@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -19,6 +20,15 @@ from config.database import build_database_settings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+LEADHUB_BASE_URL = os.environ.get("LEADHUB_BASE_URL", "").strip().rstrip("/")
+LEADHUB_ORIGIN = ""
+if LEADHUB_BASE_URL:
+    leadhub_url = urlparse(LEADHUB_BASE_URL)
+    if leadhub_url.scheme == "https" and leadhub_url.netloc and not leadhub_url.username and not leadhub_url.password:
+        LEADHUB_ORIGIN = f"https://{leadhub_url.netloc}"
+        LEADHUB_BASE_URL = LEADHUB_ORIGIN
+    else:
+        LEADHUB_BASE_URL = ""
 
 
 # Quick-start development settings - unsuitable for production
@@ -54,6 +64,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'config.middleware.ProductSecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -85,6 +96,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'students.context_processors.leadhub_config',
             ],
         },
     },

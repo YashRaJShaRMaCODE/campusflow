@@ -1,0 +1,60 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A school-scoped marks and reporting API for small schools. Explore the synthetic-data demo and request a pilot.">
+    <meta name="theme-color" content="#101a18">
+    <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}/product/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="CampusFlow — clearer school reporting">
+    <meta property="og:description" content="A school-scoped marks and reporting API for small schools.">
+    <title>CampusFlow — clearer school reporting</title>
+    <link rel="stylesheet" href="{% static 'campusflow.css' %}">
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="topbar"><a class="brand" href="/product/"><span class="brand-mark" aria-hidden="true">C</span>CampusFlow</a><a class="api-link" href="/">API reference <span aria-hidden="true">↗</span></a></header>
+    <main id="main">
+        <section class="hero">
+            <div class="hero-copy">
+                <p class="eyebrow">A calmer marks workflow</p>
+                <h1>Less spreadsheet chasing. <em>Clearer school reports.</em></h1>
+                <p class="lede">A focused API for small schools to record exam marks, review class summaries, and keep each school's records private to its staff.</p>
+                <div class="actions"><a class="button" href="/api-auth/login/">Staff sign in <span aria-hidden="true">→</span></a><a class="text-link" href="/">Explore API endpoints</a></div>
+                <p class="demo-note"><span aria-hidden="true">●</span> Demo-ready with synthetic data; do not enter real student records.</p>
+            </div>
+            <div class="report-card" aria-label="Illustrative synthetic class report">
+                <div class="report-top"><span>CLASS SNAPSHOT</span><span class="demo-pill">SAMPLE DATA</span></div>
+                <h2>Year 8 · Mathematics</h2>
+                <div class="metric-row"><div><strong>28</strong><span>records</span></div><div><strong>76.4%</strong><span>class average</span></div></div>
+                <div class="chart" aria-hidden="true"><span class="bar-1"></span><span class="bar-2"></span><span class="bar-3"></span><span class="bar-4"></span><span class="bar-5"></span><span class="bar-6"></span><span class="bar-7"></span><span class="bar-8"></span></div>
+                <p class="chart-caption">A quick view of results, without exposing student names here.</p>
+            </div>
+        </section>
+        <section class="proof" aria-label="Product boundaries">
+            <article><span>01</span><h2>School-scoped records</h2><p>Student endpoints require staff sign-in and an assigned school. Client-supplied school IDs do not grant access.</p></article>
+            <article><span>02</span><h2>Useful summaries</h2><p>Search, filters, averages, pass counts, and private CSV export help staff answer routine reporting questions.</p></article>
+            <article><span>03</span><h2>Safer by default</h2><p>Change history avoids student marks; exports are marked private. Data protection review and durable backups are still required before real use.</p></article>
+        </section>
+        <section class="signup" aria-labelledby="signup-title">
+            <p class="eyebrow">Shape the next version</p>
+            <h2 id="signup-title">Built around real school workflows.</h2>
+            <p>Interested in a small, synthetic-data pilot? Join the opt-in list and tell us what reporting takes too long.</p>
+            {% if leadhub_base_url %}
+            <form class="signup-form" data-leadhub-form data-endpoint="{{ leadhub_base_url }}/api/subscribe">
+                <label class="visually-hidden" for="signup-email">Work email</label>
+                <input id="signup-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@school.org" required>
+                <label class="consent"><input name="consent" type="checkbox" required> Email me CampusFlow updates. I can unsubscribe anytime.</label>
+                <div class="honeypot" aria-hidden="true"><label for="signup-website">Leave empty</label><input id="signup-website" name="website" tabindex="-1" autocomplete="off"></div>
+                <button type="submit">Request a pilot <span aria-hidden="true">↗</span></button>
+                <p class="status" data-leadhub-status role="status" aria-live="polite"></p>
+            </form>
+            {% else %}<p class="signup-note">Pilot signup opens after the secure mailing service is configured.</p>{% endif %}
+        </section>
+    </main>
+    <footer><a class="brand" href="/product/"><span class="brand-mark" aria-hidden="true">C</span>CampusFlow</a><p>Designed for synthetic demos until school privacy, security, and hosting reviews are complete.</p></footer>
+    <script type="module" src="{% static 'campusflow.js' %}"></script>
+</body>
+</html>

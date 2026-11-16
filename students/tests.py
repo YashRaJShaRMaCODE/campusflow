@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from .models import School, SchoolMembership, Student, StudentChangeEvent, StudentExportRequest
@@ -35,6 +35,34 @@ class StudentApiTests(TestCase):
         response = self.client.get("/healthz/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "ok"})
+
+    def test_product_page_is_public_and_keeps_signup_closed_without_https_leadhub(self):
+        with override_settings(LEADHUB_BASE_URL="", LEADHUB_ORIGIN=""):
+            response = self.client.get("/product/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "synthetic data")
+        self.assertNotContains(response, "data-leadhub-form")
+        self.assertIn("Content-Security-Policy", response)
+
+    def test_product_signup_requires_explicit_consent_and_allows_only_leadhub_origin(self):
+        origin = "https://leads.example.test"
+        with override_settings(LEADHUB_BASE_URL=origin, LEADHUB_ORIGIN=origin):
+            response = self.client.get("/product/")
+
+        self.assertContains(response, 'data-leadhub-form')
+        self.assertContains(response, 'name="consent" type="checkbox" required')
+        self.assertIn(f"connect-src 'self' {origin}", response["Content-Security-Policy"])
+        self.assertNotIn("data-leadhub-form", self.client.get("/").content.decode())
+
+    def test_search_crawling_endpoints_exclude_private_student_routes(self):
+        robots = self.client.get("/robots.txt")
+        sitemap = self.client.get("/sitemap.xml")
+
+        self.assertContains(robots, "Disallow: /students/")
+        self.assertContains(robots, "Disallow: /admin/")
+        self.assertContains(sitemap, "/product/")
+        self.assertNotContains(sitemap, "/students/")
 
     def test_student_data_requires_authentication(self):
         paths = (
