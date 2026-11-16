@@ -43,6 +43,7 @@ class StudentApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "synthetic data")
         self.assertNotContains(response, "data-leadhub-form")
+        self.assertNotContains(response, "data-leadhub-recommendations")
         self.assertIn("Content-Security-Policy", response)
 
     def test_product_signup_requires_explicit_consent_and_allows_only_leadhub_origin(self):
@@ -52,6 +53,8 @@ class StudentApiTests(TestCase):
 
         self.assertContains(response, 'data-leadhub-form')
         self.assertContains(response, 'name="consent" type="checkbox" required')
+        self.assertContains(response, f'data-endpoint="{origin}/api/recommendations"')
+        self.assertContains(response, 'data-recommendations-consent')
         self.assertIn(f"connect-src 'self' {origin}", response["Content-Security-Policy"])
         self.assertNotIn("data-leadhub-form", self.client.get("/").content.decode())
 

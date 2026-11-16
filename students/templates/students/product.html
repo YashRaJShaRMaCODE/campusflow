@@ -51,6 +51,11 @@
                 <button type="submit">Request a pilot <span aria-hidden="true">↗</span></button>
                 <p class="status" data-leadhub-status role="status" aria-live="polite"></p>
             </form>
+            <div class="related-products" data-leadhub-recommendations data-endpoint="{{ leadhub_base_url }}/api/recommendations">
+                <label class="consent"><input type="checkbox" data-recommendations-consent> Show me relevant products too. No school or student activity is shared.</label>
+                <p class="status" data-recommendations-status role="status" aria-live="polite"></p>
+                <ul data-recommendations-list></ul>
+            </div>
             {% else %}<p class="signup-note">Pilot signup opens after the secure mailing service is configured.</p>{% endif %}
         </section>
     </main>

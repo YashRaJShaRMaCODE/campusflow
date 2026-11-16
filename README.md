@@ -2,7 +2,7 @@
 
 A sample Django REST API for recording student marks and viewing class summaries. Student-data endpoints require a signed-in staff account. The public root and health check expose no student information.
 
-The product overview is available at `/product/`. Its report visual is synthetic. Never put real student details into the demo. An opt-in mailing form appears only when `LEADHUB_BASE_URL` is set to the deployed HTTPS LeadHub origin; the product page CSP permits requests only to that configured origin.
+The product overview is available at `/product/`. Its report visual is synthetic. Never put real student details into the demo. An opt-in mailing form appears only when `LEADHUB_BASE_URL` is set to the deployed HTTPS LeadHub origin; a separate unchecked option requests related products using only the product ID after consent. The product page CSP permits requests only to the configured origin.
 
 ## Run locally
 
