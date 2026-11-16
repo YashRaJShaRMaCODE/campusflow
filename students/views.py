@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Student, StudentChangeEvent, StudentExportRequest
-from .permissions import HasSchoolMembership
+from .permissions import CanManageSchoolRecords, HasSchoolMembership
 from .serializers import StudentChangeEventSerializer, StudentExportRequestSerializer, StudentSerializer
 
 
@@ -30,7 +30,7 @@ class StudentCreateView(PrivateStudentDataMixin, generics.CreateAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser, HasSchoolMembership]
+    permission_classes = [IsAdminUser, CanManageSchoolRecords]
 
     def perform_create(self, serializer):
         with transaction.atomic():
@@ -144,7 +144,7 @@ class StudentDetailView(PrivateStudentDataMixin, generics.RetrieveUpdateAPIView)
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser, HasSchoolMembership]
+    permission_classes = [IsAdminUser, CanManageSchoolRecords]
 
     def get_queryset(self):
         return Student.objects.filter(school=self.request.school)

@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from .models import SchoolMembership
 
@@ -15,4 +15,14 @@ class HasSchoolMembership(BasePermission):
         if not membership:
             return False
         request.school = membership.school
+        request.school_membership = membership
         return True
+
+
+class CanManageSchoolRecords(HasSchoolMembership):
+    message = "A manager role is required to change student records."
+
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        return request.method in SAFE_METHODS or request.school_membership.role == SchoolMembership.Role.MANAGER

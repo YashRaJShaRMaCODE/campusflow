@@ -50,6 +50,10 @@ class StudentExportRequest(models.Model):
 
 
 class SchoolMembership(models.Model):
+    class Role(models.TextChoices):
+        MANAGER = "manager", "Manager"
+        VIEWER = "viewer", "Viewer"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -60,6 +64,7 @@ class SchoolMembership(models.Model):
         on_delete=models.PROTECT,
         related_name="memberships",
     )
+    role = models.CharField(max_length=10, choices=Role.choices, default=Role.MANAGER)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
