@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .summary import SchoolSummaryView
 from .views import (
     APIRootView,
     AverageMarksView,
@@ -59,4 +60,5 @@ urlpatterns = [
         PassedStudentsCountView.as_view(),
         name="student-count",
     ),
+    path("students/summary/", SchoolSummaryView.as_view(), name="student-summary"),
 ]

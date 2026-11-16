@@ -35,6 +35,7 @@ The root `GET /` lists endpoint links. `GET /healthz/` is a minimal public healt
 | `GET` | `/students/{id}/changes/` | View the latest 25 school-scoped change events; includes actor ID, action, record ID and time, never student field values |
 | `GET` | `/students/average/` | Class record count and average marks/percentage |
 | `GET` | `/students/count/` | Count records with at least 33% |
+| `GET` | `/students/summary/` | One school-scoped aggregate with record count, average marks/percentage, and count at or above 33%; no student details |
 
 Example create request:
 
